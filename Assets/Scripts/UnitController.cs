@@ -12,6 +12,8 @@ public class UnitController : MonoBehaviour {
 
     private Vector3 newPosition;
     public GameObject newPositionMarker;
+    private Ship formationLeader;
+
 
     void Awake() {
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>(); // set the mainCamera variable to the camera with the tag "MainCamera"
@@ -41,19 +43,24 @@ public class UnitController : MonoBehaviour {
         return units.SelectedUnits[0].transform.position;
     }
 
-    private void getMoveToLocation() {
-        if (Input.GetMouseButtonDown(1)) {
-            // First press, selects a X and Z position on the plane
-            newPosition = GetPointUnderCursor();
-            pressed = true;
-            move = false;
+   private void getMoveToLocation() {
+    if (Input.GetMouseButtonDown(1)) {
+        // First press, selects a X and Z position on the plane
+        newPosition = GetPointUnderCursor();
+        pressed = true;
+        move = false;
 
-        } else if (Input.GetMouseButtonUp(1)) {
-            // The mouse has been released, a position to move to has been stored in a Vector3
-            // Move the ship to the new position in 3D space (no pathfinding, it is a straight path)
-            pressed = false;
-            move = true;
+    } else if (Input.GetMouseButtonUp(1)) {
+        // The mouse has been released, a position to move to has been stored in a Vector3
+        // Move the ship to the new position in 3D space (no pathfinding, it is a straight path)
+        pressed = false;
+        move = true;
 
+        if (units.SelectedUnits.Count == 1) {
+            // If only one unit is selected, move it directly to the new position
+            units.SelectedUnits[0].Mover.MoveTo(newPosition);
+        } else {
+            // If multiple units are selected, calculate formation movement
             foreach (Ship ship in units.SelectedUnits) {
                 ship.Mover.Speed = ship.Mover.defaultSpeed;
                 if (Vector3.Distance(ship.transform.position, newPosition) < 5) {
@@ -62,26 +69,32 @@ public class UnitController : MonoBehaviour {
                 }
             }
         }
-
-        if (pressed) {
-            newPosition.y = 0.001f;
-            newPositionMarker.transform.position = newPosition;
-        }
     }
 
-    void Update() {
-        findSelectedUnit();
-        if (units.SelectedUnits.Count != 0) {
-            getMoveToLocation();
-            if (move) {
-                // selectedUnit.GetComponent<UnitMover>().moveTo(newPosition);
-                foreach (Ship ship in units.SelectedUnits) {
-                    ship.Mover.moveTo(newPosition);
-                }
-                move = false;
+    if (pressed) {
+        newPosition.y = 0.001f;
+        newPositionMarker.transform.position = newPosition;
+    }
+}
+
+
+ void Update() {
+    findSelectedUnit();
+    if (units.SelectedUnits.Count != 0) {
+        getMoveToLocation();
+        if (move) {
+            // Identify the leader unit
+            formationLeader = units.SelectedUnits[0]; // For simplicity, assuming the first selected unit is the leader
+            foreach (Ship ship in units.SelectedUnits) {
+                // Calculate relative position to the leader and move accordingly
+                Vector3 offset = ship.transform.position - formationLeader.transform.position;
+                Vector3 targetPos = newPosition + offset;
+                ship.Mover.MoveTo(targetPos);
             }
+            move = false;
         }
     }
+}
 
     public Vector3 GetPointUnderCursor() {
         // Create a new plane with normal (0, 1, 0) and passing through the origin
@@ -114,4 +127,5 @@ public class UnitController : MonoBehaviour {
             return mouseWorldPosition;
         }
     }
+    
 }

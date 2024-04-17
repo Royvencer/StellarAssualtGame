@@ -3,83 +3,68 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class UnitMover : MonoBehaviour {
-
+public class UnitMover : MonoBehaviour
+{
     private NavMeshAgent agent;
-
-    Vector3 newPosition;
-    bool move = false;
+    private Vector3 targetPosition;
+    private bool move = false;
 
     public float defaultSpeed = 3;
     private float speed;
-    public float rotationSpeed = 200;
+    public float rotationSpeed = 400;
     public bool closeToTarget = false;
 
-    public float Speed {
+    public float Speed
+    {
         get { return speed; }
         set { speed = value; }
     }
 
-    void Awake() {
+    void Awake()
+    {
         agent = GetComponentInParent<NavMeshAgent>();
     }
 
-    void Update() {
-        if (newPosition != null && move) {
-            if (newPosition != transform.position) {
+    void Update()
+    {
+        if (move)
+        {
+            if (targetPosition != Vector3.zero)
+            {
+                // Calculate the direction to the target
+                Vector3 direction = (targetPosition - transform.position).normalized;
 
-                rotateShip(newPosition);
+                // Create the rotation we need to be in to look at the target
+                Quaternion lookRotation = Quaternion.LookRotation(direction);
 
-                agent.SetDestination(newPosition);
+                // Calculate the angle between current rotation and target rotation
+                float angle = Quaternion.Angle(transform.rotation, lookRotation);
 
+                // Calculate time to complete the rotation
+                float timeToComplete = angle / rotationSpeed;
 
-                // // Find the vector pointing from our position to the target
-                // Vector3 direction = (newPosition - transform.position).normalized;
+                // Calculate percentage of rotation completed in this frame
+                float percentageDone = Mathf.Min(1F, Time.deltaTime / timeToComplete);
 
-                // // Create the rotation we need to be in to look at the target
-                // Quaternion lookRotation = Quaternion.LookRotation(direction);
+                // Rotate towards the target direction
+                transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, percentageDone);
 
-                // float angle = Quaternion.Angle(transform.rotation, lookRotation);
-                // float timeToComplete = angle / rotationSpeed;
-                // float percentageDone = Mathf.Min(1F, Time.deltaTime / timeToComplete);
+                // Move towards the target position using NavMeshAgent
+                agent.SetDestination(targetPosition);
 
-                // // Rotate towards a direction, but not immediately (rotate a little every frame)
-                // if (transform.position != newPosition) {
-                //     transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Mathf.Clamp(percentageDone * angle, 0, rotationSpeed));
-                // }
-
-                // // Move towards (0, 0, 1) relative to ship rotation
-                // float distToTarget = Vector3.Distance(newPosition, transform.position);
-
-                // if (!closeToTarget) {
-                //     speed = Mathf.Clamp(Vector3.Distance(newPosition, transform.position), 0, defaultSpeed);
-                // } else {
-                //     speed = Mathf.Clamp(Vector3.Distance(newPosition, transform.position) / 2, 0, defaultSpeed);
-                // }
-
-                // if (speed < 0.06) {
-                //     speed = 0;
-                //     move = false;
-                // }
-
-                // transform.Translate(Vector3.forward * Time.deltaTime * speed, Space.Self);
+                // Check if the unit is close to the target position
+                if (Vector3.Distance(transform.position, targetPosition) < agent.stoppingDistance)
+                {
+                    // Stop moving once the unit reaches close to the target
+                    move = false;
+                }
             }
         }
     }
 
-    private void rotateShip(Vector3 targetPosition) {
-        // Calculate the direction to the target
-        Vector3 targetDirection = (targetPosition - transform.position).normalized;
-
-        // Align the agent's rotation smoothly towards the target direction
-        if (targetDirection != Vector3.zero) {
-            Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
-        }
-    }
-
-    public void moveTo(Vector3 newPos) {
-        newPosition = newPos;
+    public void MoveTo(Vector3 newPos)
+    {
+        targetPosition = newPos;
         move = true;
     }
 }
